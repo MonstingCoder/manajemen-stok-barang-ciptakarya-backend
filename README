@@ -1,0 +1,20 @@
+# Nama Proyek
+
+Deskripsi singkat proyek.
+
+## Instalasi
+
+```bash
+git clone https://github.com/user/proyek.git
+cd proyek
+go run .
+```
+
+## Penggunaan
+
+- Jalankan server
+- Buka `http://localhost:8080`
+
+## Lisensi
+
+MIT

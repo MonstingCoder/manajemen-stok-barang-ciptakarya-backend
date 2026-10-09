@@ -1,0 +1,57 @@
+services:
+  # nginx:
+  #   container_name: nginx
+  #   image: dhi.io/nginx:1.30.5-alpine3.24
+  #   restart: always
+  #   cpus: 0.1
+  #   mem_limit: 128m
+
+  # redis:
+  #   container_name: redis
+  #   image: dhi.io/redis:8.8.3-alpine3.24
+  #   restart: always
+  #   cpus: 0.1
+  #   mem_limit: 128m
+  
+  # pgbouncer:
+  #   container_name: pgbouncer
+  #   image: dhi.io/pgbouncer:1.26.0-debian13
+  #   restart: always
+  #   depends_on: postgres
+  #   cpus: 0.1
+  #   mem_limit: 128m
+
+  # already used :
+  postgres:
+    container_name: postgres
+    image: dhi.io/postgres:18.6-alpine3.23
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    cpus: 0.15
+    mem_limit: 128m
+
+  pgadmin:
+    container_name: pgadmin
+    image: docker.io/dpage/pgadmin4:9.18.0
+    restart: always
+    depends_on: postgres
+    ports:
+      - 80:80
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    cpus: 0.1
+    mem_limit: 128m
+
+volumes:
+  postgres_data:
+  pgadmin_data:
