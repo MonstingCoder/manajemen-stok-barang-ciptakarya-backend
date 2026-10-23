@@ -49,7 +49,7 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-    cpus: 0.1
+    cpus: 0.35
     mem_limit: 128m
 
 volumes:
