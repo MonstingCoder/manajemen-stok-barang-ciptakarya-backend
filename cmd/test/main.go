@@ -6,7 +6,21 @@ import (
 )
 
 func main() {
-	fn2()
+	fn4()
+}
+
+func fn4() {
+	a, b := new(int), new(int)
+	if _, err := fmt.Scanf("%d>>%d", a, b); err != nil {
+		fmt.Println("Error reading input:", err)
+		return
+	}
+
+	fmt.Println(*a >> *b)
+}
+
+func fn3() {
+	fmt.Println("apa itu bufio?")
 }
 
 func fn2() {

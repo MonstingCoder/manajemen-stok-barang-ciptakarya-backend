@@ -3,51 +3,56 @@ package service
 import (
 	"context"
 
+	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/entity"
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/model"
 )
 
-type roleRepo interface {
-	Creates(ctx context.Context, roles []model.Role) (err error)
+type RoleRepo interface {
+	Creates(ctx context.Context, roles []entity.Role) (err error)
 	Delete(ctx context.Context, id uint) (err error)
 }
 
-// var _ roleRepo = (*repository.RoleRepo)(nil)
+// var _ RoleRepo = (*repository.RoleRepo)(nil)
 
 type RoleService struct {
-	r roleRepo
+	r RoleRepo
 }
 
-func NewRoleService(r roleRepo) (s *RoleService) {
+func NewRoleService(r RoleRepo) (s *RoleService) {
 	s = new(RoleService{r})
 	return
 }
 
-func (s *RoleService) Creates(ctx context.Context, in model.RoleInput) (role model.Role, err error) {
-	var pwHashes []*string
-	for _, user := range in.Users {
-		if err = user.Email.Check(); err != nil {
-			return
-		}
-		if err = user.Password.Check(); err != nil {
-			return
-		}
+func (s *RoleService) Creates(ctx context.Context, ins []model.RoleInput) (roles []entity.Role, err error) {
+	roles = make([]entity.Role, len(ins))
+	for i, in := range ins {
+		roles[i] = entity.Role{Name: in.Name, Users: make([]entity.User, len(in.Users))}
+		for j, user := range in.Users {
+			if err = user.Email.Check(); err != nil {
+				return
+			}
+			if err = user.Password.Check(); err != nil {
+				return
+			}
 
-		var pwHash *string
-		pwHash, err = user.Password.Hash()
-		if err != nil {
-			return
+			var pwHash *string
+			if pwHash, err = user.Password.Hash(); err != nil {
+				return
+			}
+			roles[i].Users[j] = entity.User{
+				Name:         user.Name,
+				Email:        (*string)(user.Email),
+				PasswordHash: pwHash,
+				RoleID:       user.RoleID,
+			}
 		}
-
-		pwHashes = append(pwHashes, pwHash)
-		// users :=
-		/*
-			new(model.User{
-			Name:         in.Name,
-			Email:        (*string)(in.Email),
-			PasswordHash: pwHash,
-			RoleID:       in.RoleID,
-			})
-		*/
 	}
-	panic("unimplemented")
+
+	err = s.r.Creates(ctx, roles)
+	return
+}
+
+func (s *RoleService) Delete(ctx context.Context, id uint) (err error) {
+	err = s.r.Delete(ctx, id)
+	return
 }

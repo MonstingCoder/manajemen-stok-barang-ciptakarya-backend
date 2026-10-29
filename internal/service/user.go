@@ -4,34 +4,33 @@ import (
 	"context"
 	"errors"
 
+	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/entity"
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/helper"
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/model"
 )
 
-var (
-	ErrLimitTooLarge = errors.New("ERROR LIMIT TO LARGE")
-)
+var ErrLimitTooLarge = errors.New("ERROR LIMIT TO LARGE")
 
-type userRepo interface {
-	Create(ctx context.Context, user *model.User) (err error)
-	Finds(ctx context.Context, offset, limit uint) (users []model.User, err error)
-	FindByEmail(ctx context.Context, email string) (user *model.User, err error)
-	Update(ctx context.Context, id uint, user *model.User) (err error)
+type UserRepo interface {
+	Create(ctx context.Context, user *entity.User) (err error)
+	Finds(ctx context.Context, limit, offset uint) (users []entity.User, err error)
+	FindByEmail(ctx context.Context, email string) (user *entity.User, err error)
+	Update(ctx context.Context, id uint, user *entity.User) (err error)
 	Delete(ctx context.Context, id uint) (err error)
 }
 
-// var _ userRepo = (*repository.UserRepo)(nil)
+// var _ UserRepo = (*repository.UserRepo)(nil)
 
 type UserService struct {
-	r userRepo
+	r UserRepo
 }
 
-func NewUserService(r userRepo) (s *UserService) {
+func NewUserService(r UserRepo) (s *UserService) {
 	s = new(UserService{r})
 	return
 }
 
-func (s *UserService) Create(ctx context.Context, in *model.UserInput) (id uint, err error) {
+func (s *UserService) Create(ctx context.Context, in *model.UserInput) (user *entity.User, err error) {
 	if err = in.Email.Check(); err != nil {
 		return
 	}
@@ -44,22 +43,17 @@ func (s *UserService) Create(ctx context.Context, in *model.UserInput) (id uint,
 		return
 	}
 
-	user := new(model.User{
+	user = new(entity.User{
 		Name:         in.Name,
 		Email:        (*string)(in.Email),
 		PasswordHash: pwHash,
 		RoleID:       in.RoleID,
 	})
-
-	if err = s.r.Create(ctx, user); err != nil {
-		return
-	}
-
-	id = user.ID
+	err = s.r.Create(ctx, user)
 	return
 }
 
-func (s *UserService) Finds(ctx context.Context, limit, offset uint) (users []model.User, err error) {
+func (s *UserService) Finds(ctx context.Context, limit, offset uint) (users []entity.User, err error) {
 	if limit == 0 {
 		limit = 5
 	}
@@ -68,11 +62,11 @@ func (s *UserService) Finds(ctx context.Context, limit, offset uint) (users []mo
 		return
 	}
 
-	users, err = s.r.Finds(ctx, offset, limit)
+	users, err = s.r.Finds(ctx, limit, offset)
 	return
 }
 
-func (s *UserService) FindByEmail(ctx context.Context, email helper.Email) (user *model.User, err error) {
+func (s *UserService) FindByEmail(ctx context.Context, email helper.Email) (user *entity.User, err error) {
 	if err = email.Check(); err != nil {
 		return
 	}
@@ -94,7 +88,7 @@ func (s *UserService) Update(ctx context.Context, id uint, in *model.UserInput) 
 		return
 	}
 
-	err = s.r.Update(ctx, id, new(model.User{
+	err = s.r.Update(ctx, id, new(entity.User{
 		Name:         in.Name,
 		Email:        (*string)(in.Email),
 		PasswordHash: pwHash,

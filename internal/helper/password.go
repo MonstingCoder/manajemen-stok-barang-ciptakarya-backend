@@ -2,8 +2,7 @@ package helper
 
 import (
 	"errors"
-	"strings"
-	"unicode"
+	"regexp"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -11,6 +10,11 @@ import (
 var (
 	ErrPwLen     = errors.New("ERROR PASSWORD LENGTH")
 	ErrInvalidPw = errors.New("ERROR INVALID PASSWORD")
+
+	pwUpper   = regexp.MustCompile(`\p{Lu}`)
+	pwLower   = regexp.MustCompile(`\p{Ll}`)
+	pwDigit   = regexp.MustCompile(`\p{N}`)
+	pwSpecial = regexp.MustCompile(`[\p{P}\p{S}]`)
 )
 
 type Password string
@@ -20,18 +24,11 @@ func (p *Password) Check() (err error) {
 		err = ErrPwLen
 		return
 	}
-	if !strings.ContainsFunc(string(*p), func(r rune) (res bool) {
-		res = unicode.IsUpper(r) &&
-			unicode.IsLower(r) &&
-			unicode.IsDigit(r) &&
-			unicode.IsSpace(r) &&
-			unicode.IsPunct(r) &&
-			unicode.IsSymbol(r)
-		return
-	}) {
+
+	pw := string(*p)
+	if !pwUpper.MatchString(pw) || !pwLower.MatchString(pw) || !pwDigit.MatchString(pw) || !pwSpecial.MatchString(pw) {
 		err = ErrInvalidPw
 	}
-
 	return
 }
 
