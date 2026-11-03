@@ -3,217 +3,130 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 	"strconv"
-	"time"
 
-	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/apperror"
-	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/entity"
-	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/helper"
+	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/config"
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/model"
-	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/service"
-	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/utility"
 )
 
 type UserService interface {
-	Create(ctx context.Context, in *model.UserInput) (*entity.User, error)
-	Finds(ctx context.Context, limit, offset uint) ([]entity.User, error)
-	FindByEmail(ctx context.Context, email helper.Email) (*entity.User, error)
-	Update(ctx context.Context, id uint, in *model.UserInput) error
-	Delete(ctx context.Context, id uint) error
+	Reg(ctx context.Context, cfg *config.Config, in *model.UserIn) (token string, err error)
+	Login(ctx context.Context, cfg *config.Config, email model.Email, pw model.Pw) (token string, err error)
+	Finds(ctx context.Context, limit, offset uint) (users []model.User, err error)
+	Update(ctx context.Context, id uint, in *model.UserIn) (err error)
+	Delete(ctx context.Context, id uint) (err error)
 }
+
+// var _ UserService = (*service.UserService)(nil)
 
 type UserHandler struct {
-	service UserService
+	s   UserService
+	cfg *config.Config
 }
 
-func NewUserHandler(s UserService) (h *UserHandler) {
-	h = new(UserHandler{service: s})
+func NewUserHandler(s UserService, cfg *config.Config) (h *UserHandler) {
+	h = new(UserHandler{s, cfg})
 	return
 }
 
-func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
-	//
-}
+func (h *UserHandler) Reg(w http.ResponseWriter, r *http.Request) {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
 
-// code dibawah hasil generate copilot :
-
-type userRequest struct {
-	Name     *string          `json:"name"`
-	Email    *helper.Email    `json:"email"`
-	Password *helper.Password `json:"password"`
-	RoleID   *uint            `json:"role_id"`
-}
-
-type userResponse struct {
-	ID        uint      `json:"id"`
-	Name      *string   `json:"name"`
-	Email     *string   `json:"email"`
-	RoleID    *uint     `json:"role_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
-	in, ok := decodeUserInput(w, r)
-	if !ok {
+	body := new(model.UserIn)
+	if err := dec.Decode(body); err != nil {
+		WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
 
-	user, err := h.service.Create(r.Context(), in)
+	token, err := h.s.Reg(r.Context(), h.cfg, body)
 	if err != nil {
-		writeServiceError(w, err)
+		WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 		return
 	}
-	if user == nil {
-		utility.WriteError(w, http.StatusInternalServerError, "internal server error")
+
+	WriteResponse(w, http.StatusCreated, map[string]string{"token": token})
+}
+
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	body := new(model.UserLoginReq)
+	if err := dec.Decode(body); err != nil {
+		WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
-	utility.WriteResponse(w, http.StatusCreated, toUserResponse(user))
+
+	token, err := h.s.Login(r.Context(), h.cfg, model.Email(*body.Email), model.Pw(*body.Password))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		return
+	}
+
+	WriteResponse(w, http.StatusOK, map[string]string{"token": token})
 }
 
 func (h *UserHandler) Finds(w http.ResponseWriter, r *http.Request) {
-	limit, err := queryUint(r, "limit")
+	q := r.URL.Query()
+
+	limit, err := strconv.ParseUint(q.Get("limit"), 10, 0)
 	if err != nil {
-		utility.WriteError(w, http.StatusBadRequest, "invalid limit")
-		return
-	}
-	offset, err := queryUint(r, "offset")
-	if err != nil {
-		utility.WriteError(w, http.StatusBadRequest, "invalid offset")
+		WriteError(w, http.StatusBadRequest, map[string]string{"message": "limit query parameter must be a positive integer"})
 		return
 	}
 
-	users, err := h.service.Finds(r.Context(), limit, offset)
+	offset, err := strconv.ParseUint(q.Get("offset"), 10, 0)
 	if err != nil {
-		utility.WriteError(w, http.StatusInternalServerError, "internal server error")
+		WriteError(w, http.StatusBadRequest, map[string]string{"message": "offset query parameter must be a positive integer"})
 		return
 	}
 
-	responses := make([]userResponse, len(users))
-	for i := range users {
-		responses[i] = toUserResponse(&users[i])
-	}
-	utility.WriteError(w, http.StatusOK, responses)
-}
-
-func (h *UserHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
-	email := helper.Email(r.URL.Query().Get("email"))
-	user, err := h.service.FindByEmail(r.Context(), email)
+	users, err := h.s.Finds(r.Context(), uint(limit), uint(offset))
 	if err != nil {
-		writeServiceError(w, err)
+		WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 		return
 	}
-	if user == nil {
-		utility.WriteError(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
-	utility.WriteError(w, http.StatusOK, toUserResponse(user))
+
+	WriteResponse(w, http.StatusOK, users)
 }
 
 func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
-	if !ok {
-		return
-	}
-	in, ok := decodeUserInput(w, r)
-	if !ok {
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 0)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, map[string]string{"message": "id path parameter must be a positive integer"})
 		return
 	}
 
-	if err := h.service.Update(r.Context(), id, in); err != nil {
-		writeServiceError(w, err)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	body := new(model.UserIn)
+	if err := dec.Decode(body); err != nil {
+		WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+
+	if err = h.s.Update(r.Context(), uint(id), body); err != nil {
+		WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		return
+	}
+
+	WriteResponse(w, http.StatusOK, map[string]string{"message": "user updated successfully"})
 }
 
 func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
-	if !ok {
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 0)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, map[string]string{"message": "id path parameter must be a positive integer"})
 		return
 	}
-	if err := h.service.Delete(r.Context(), id); err != nil {
-		writeServiceError(w, err)
+
+	if err = h.s.Delete(r.Context(), uint(id)); err != nil {
+		WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
-}
 
-func decodeUserInput(w http.ResponseWriter, r *http.Request) (*model.UserInput, bool) {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	var body userRequest
-	if err := decoder.Decode(&body); err != nil {
-		utility.WriteError(w, http.StatusBadRequest, "invalid request body")
-		return nil, false
-	}
-	if err := decoder.Decode(new(any)); !errors.Is(err, io.EOF) {
-		utility.WriteError(w, http.StatusBadRequest, "request body must contain one JSON object")
-		return nil, false
-	}
-	if body.Name == nil || body.Email == nil || body.Password == nil || body.RoleID == nil {
-		utility.WriteError(w, http.StatusBadRequest, "name, email, password, and role_id are required")
-		return nil, false
-	}
-
-	return &model.UserInput{
-		Name:     body.Name,
-		Email:    body.Email,
-		Password: body.Password,
-		RoleID:   body.RoleID,
-	}, true
-}
-
-func queryUint(r *http.Request, key string) (uint, error) {
-	value := r.URL.Query().Get(key)
-	if value == "" {
-		return 0, nil
-	}
-	parsed, err := strconv.ParseUint(value, 10, strconv.IntSize)
-	return uint(parsed), err
-}
-
-func pathID(w http.ResponseWriter, r *http.Request) (uint, bool) {
-	id, err := strconv.ParseUint(r.PathValue("id"), 10, strconv.IntSize)
-	if err != nil || id == 0 {
-		utility.WriteError(w, http.StatusBadRequest, "invalid user id")
-		return 0, false
-	}
-	return uint(id), true
-}
-
-func toUserResponse(user *entity.User) userResponse {
-	return userResponse{
-		ID:        user.ID,
-		Name:      user.Name,
-		Email:     user.Email,
-		RoleID:    user.RoleID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-	}
-}
-
-func writeServiceError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, service.ErrLimitTooLarge):
-		utility.WriteError(w, http.StatusBadRequest, "limit must not exceed 50")
-	case errors.Is(err, helper.ErrEmptyEmail),
-		errors.Is(err, helper.ErrEmailLen),
-		errors.Is(err, helper.ErrInvalidEmail),
-		errors.Is(err, helper.ErrPwLen),
-		errors.Is(err, helper.ErrInvalidPw):
-		utility.WriteError(w, http.StatusBadRequest, "invalid user data")
-	case errors.Is(err, apperror.ErrUserNotFound):
-		utility.WriteError(w, http.StatusNotFound, "user not found")
-	case errors.Is(err, apperror.ErrUserEmailTaken),
-		errors.Is(err, apperror.ErrUserExists):
-		utility.WriteError(w, http.StatusConflict, "user already exists")
-	default:
-		utility.WriteError(w, http.StatusInternalServerError, "internal server error")
-	}
+	WriteResponse(w, http.StatusOK, map[string]string{"message": "user deleted successfully"})
 }

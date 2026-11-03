@@ -11,8 +11,9 @@ var ErrParseEnv = errors.New("ERROR PARSE ENV")
 
 type Config struct {
 	DBUser     string `env:"DB_USER"`
-	DBPassword string
-	DBName     string
+	DBPassword string `env:"DB_PASSWORD"`
+	DBName     string `env:"DB_NAME"`
+	JWTSecret  []byte `env:"JWT_SECRET"`
 }
 
 func NewConfig() (cfg *Config, err error) {

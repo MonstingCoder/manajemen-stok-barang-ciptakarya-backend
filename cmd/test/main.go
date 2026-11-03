@@ -1,12 +1,62 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"reflect"
+	"time"
 )
 
 func main() {
-	fn4()
+	fn6()
+}
+
+func fn6() {
+	withBufio := func(loop uint) (timeTaken time.Duration) {
+		now := time.Now()
+
+		w := bufio.NewWriter(os.Stdout)
+		defer w.Flush()
+
+		for i := range loop {
+			fmt.Fprintln(w, "loop ke :", i)
+		}
+
+		timeTaken = time.Since(now)
+		return
+	}
+	withoutBufio := func(loop uint) (timeTaken time.Duration) {
+		now := time.Now()
+
+		for i := range loop {
+			fmt.Println("loop ke :", i)
+		}
+
+		timeTaken = time.Since(now)
+		return
+	}
+
+	var loop uint = 1_000_000
+	tt1 := withBufio(loop)
+	tt2 := withoutBufio(loop)
+	fmt.Printf("\nWaktu yang dibutuhkan dengan bufio: %v\nWaktu yang dibutuhkan tanpa bufio: %v\n", tt1, tt2)
+}
+
+func fn5() {
+	type Orang struct {
+		Nama string
+		Umur uint
+	}
+
+	var (
+		a Orang
+		b *Orang
+		c = Orang{}
+		d = new(Orang)
+	)
+
+	fmt.Printf("%+v\n%+v\n%+v\n%+v\n", a, b, c, d)
 }
 
 func fn4() {

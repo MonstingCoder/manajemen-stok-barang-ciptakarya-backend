@@ -1,11 +1,13 @@
-package utility
+package handler
 
 import (
 	"encoding/json"
 	"net/http"
 )
 
-var WriteError = WriteResponse
+func WriteError(w http.ResponseWriter, status int, data any) {
+	WriteResponse(w, status, data)
+}
 
 func WriteResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")

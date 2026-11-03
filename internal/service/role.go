@@ -3,12 +3,11 @@ package service
 import (
 	"context"
 
-	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/entity"
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/model"
 )
 
 type RoleRepo interface {
-	Creates(ctx context.Context, roles []entity.Role) (err error)
+	Creates(ctx context.Context, roles []model.Role) (err error)
 	Delete(ctx context.Context, id uint) (err error)
 }
 
@@ -23,23 +22,23 @@ func NewRoleService(r RoleRepo) (s *RoleService) {
 	return
 }
 
-func (s *RoleService) Creates(ctx context.Context, ins []model.RoleInput) (roles []entity.Role, err error) {
-	roles = make([]entity.Role, len(ins))
+func (s *RoleService) Creates(ctx context.Context, ins []model.RoleInput) (roles []model.Role, err error) {
+	roles = make([]model.Role, len(ins))
 	for i, in := range ins {
-		roles[i] = entity.Role{Name: in.Name, Users: make([]entity.User, len(in.Users))}
+		roles[i] = model.Role{Name: in.Name, Users: make([]model.User, len(in.Users))}
 		for j, user := range in.Users {
 			if err = user.Email.Check(); err != nil {
 				return
 			}
-			if err = user.Password.Check(); err != nil {
+			if err = user.Pw.Check(); err != nil {
 				return
 			}
 
 			var pwHash *string
-			if pwHash, err = user.Password.Hash(); err != nil {
+			if pwHash, err = user.Pw.Hash(); err != nil {
 				return
 			}
-			roles[i].Users[j] = entity.User{
+			roles[i].Users[j] = model.User{
 				Name:         user.Name,
 				Email:        (*string)(user.Email),
 				PasswordHash: pwHash,
