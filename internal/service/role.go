@@ -22,7 +22,7 @@ func NewRoleService(r RoleRepo) (s *RoleService) {
 	return
 }
 
-func (s *RoleService) Creates(ctx context.Context, ins []model.RoleInput) (roles []model.Role, err error) {
+func (s *RoleService) Creates(ctx context.Context, ins []model.RoleIn) (roles []model.Role, err error) {
 	roles = make([]model.Role, len(ins))
 	for i, in := range ins {
 		roles[i] = model.Role{Name: in.Name, Users: make([]model.User, len(in.Users))}

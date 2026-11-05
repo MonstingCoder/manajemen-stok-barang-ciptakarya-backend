@@ -1,4 +1,4 @@
-package handler
+package utility
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ func WriteError(w http.ResponseWriter, status int, data any) {
 }
 
 func WriteResponse(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Add("Content-Type", "application/json")
 
 	w.WriteHeader(status)
 

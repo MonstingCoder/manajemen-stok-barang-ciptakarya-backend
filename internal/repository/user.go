@@ -50,16 +50,12 @@ func (r *UserRepo) Finds(ctx context.Context, limit, offset uint) (users []model
 }
 
 func (r *UserRepo) FindByEmail(ctx context.Context, email string) (user *model.User, err error) {
-	res, err := gorm.G[model.User](r.db).Preload(clause.Associations, nil).Where("email = ?", email).Take(ctx)
-	if err != nil {
-		return
+	user = new(model.User)
+	if *user, err = gorm.G[model.User](r.db).Preload(clause.Associations, nil).Where("email = ?", email).Take(ctx); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = ErrUserNotFound
+		}
 	}
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = ErrUserNotFound
-		return
-	}
-
-	user = &res
 	return
 }
 

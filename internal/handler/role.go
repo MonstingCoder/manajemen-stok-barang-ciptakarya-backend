@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+
+	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/utility"
 )
 
 type RoleService interface {
@@ -24,14 +26,14 @@ func NewRoleHandler(s RoleService) (h *RoleHandler) {
 func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseUint(r.PathValue("id"), 10, 0)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
 
 	if err = h.s.Delete(r.Context(), uint(id)); err != nil {
-		WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		utility.WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 		return
 	}
 
-	WriteResponse(w, http.StatusOK, map[string]string{"message": "role deleted successfully"})
+	utility.WriteResponse(w, http.StatusOK, map[string]string{"message": "role deleted successfully"})
 }

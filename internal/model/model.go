@@ -3,11 +3,8 @@ package model
 import (
 	"errors"
 	"regexp"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 type Email string
@@ -67,38 +64,9 @@ func (p *Pw) Hash() (pwHash *string, err error) {
 	return
 }
 
-func (p *Pw) Verify(hash string) (ok bool) {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(*p))
-	if err != nil {
-		return
-	}
-
-	ok = true
+func (p *Pw) Verify(hash string) (err error) {
+	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(*p))
 	return
-}
-
-type UserOut struct {
-	ID        uint            `json:"id"`
-	Name      *string         `json:"name"`
-	Email     *string         `json:"email"`
-	Role      *RoleOut        `json:"role"`
-	CreatedAt *time.Time      `json:"created_at"`
-	UpdatedAt *time.Time      `json:"updated_at"`
-	DeletedAt *gorm.DeletedAt `json:"deleted_at"`
-}
-
-type RoleOut struct {
-	ID        uint            `json:"id"`
-	Name      *string         `json:"name"`
-	Users     []UserOut       `json:"users"`
-	CreatedAt *time.Time      `json:"created_at"`
-	UpdatedAt *time.Time      `json:"updated_at"`
-	DeletedAt *gorm.DeletedAt `json:"deleted_at"`
-}
-
-type UserClaims struct {
-	User *UserOut `json:"user"`
-	*jwt.RegisteredClaims
 }
 
 type UserIn struct {
@@ -108,7 +76,7 @@ type UserIn struct {
 	RoleID *uint `json:"role_id"`
 }
 
-type RoleInput struct {
+type RoleIn struct {
 	Name  *string
 	Users []UserIn
 }
