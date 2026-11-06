@@ -57,6 +57,7 @@ func run() {
 	mux.HandleFunc("POST /login", userH.Login)
 
 	mux.Handle("GET /users", middleware.Chain(http.HandlerFunc(userH.Finds), ms.Auth, adminOnly))
+	mux.Handle("GET /users/me", middleware.Chain(http.HandlerFunc(userH.Me), ms.Auth))
 	mux.Handle("PATCH /users/{id}", middleware.Chain(http.HandlerFunc(userH.Update), ms.Auth))
 	mux.Handle("DELETE /users/{id}", middleware.Chain(http.HandlerFunc(userH.Delete), ms.Auth, adminOnly))
 
@@ -64,13 +65,14 @@ func run() {
 
 	mux.Handle("POST /items", middleware.Chain(http.HandlerFunc(itemH.Create), ms.Auth, adminOnly))
 	mux.Handle("GET /items", middleware.Chain(http.HandlerFunc(itemH.Finds), ms.Auth))
+	mux.Handle("GET /tags/{name}/items", middleware.Chain(http.HandlerFunc(tagH.FindItemsByName), ms.Auth))
 	mux.Handle("GET /items/{name}", middleware.Chain(http.HandlerFunc(itemH.FindByName), ms.Auth))
 	mux.Handle("PATCH /items/{id}", middleware.Chain(http.HandlerFunc(itemH.Update), ms.Auth, adminOnly))
 	mux.Handle("DELETE /items/{id}", middleware.Chain(http.HandlerFunc(itemH.Delete), ms.Auth, adminOnly))
 
 	mux.Handle("POST /tags", middleware.Chain(http.HandlerFunc(tagH.Create), ms.Auth, adminOnly))
 	mux.Handle("GET /tags", middleware.Chain(http.HandlerFunc(tagH.Finds), ms.Auth))
-	mux.Handle("GET /tags/{name}", middleware.Chain(http.HandlerFunc(tagH.Finds), ms.Auth))
+	mux.Handle("GET /tags/{name}", middleware.Chain(http.HandlerFunc(tagH.FindByName), ms.Auth))
 	mux.Handle("DELETE /tags/{id}", middleware.Chain(http.HandlerFunc(tagH.Delete), ms.Auth, adminOnly))
 
 	h := middleware.Chain(

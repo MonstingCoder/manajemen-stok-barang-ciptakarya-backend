@@ -67,6 +67,9 @@ func (h *ItemHandler) Finds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if items == nil {
+		items = []model.Item{}
+	}
 	utility.WriteResponse(w, http.StatusOK, items)
 }
 

@@ -58,6 +58,16 @@ func (r *UserRepo) FindByEmail(ctx context.Context, email string) (user *model.U
 	return
 }
 
+func (r *UserRepo) FindByID(ctx context.Context, id uint) (user *model.User, err error) {
+	user = new(model.User)
+	if *user, err = gorm.G[model.User](r.db).Preload("Role", nil).Where("id = ?", id).Take(ctx); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = ErrUserNotFound
+		}
+	}
+	return
+}
+
 func (r *UserRepo) Update(ctx context.Context, id uint, user *model.User) (err error) {
 	if _, err = gorm.G[model.User](r.db).Where("id = ?", id).Updates(ctx, *user); err != nil {
 		return

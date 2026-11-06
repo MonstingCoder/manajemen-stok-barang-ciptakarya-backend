@@ -11,6 +11,7 @@ type UserRepo interface {
 	Create(ctx context.Context, user *model.User) (err error)
 	Finds(ctx context.Context, limit, offset uint) (users []model.User, err error)
 	FindByEmail(ctx context.Context, email string) (user *model.User, err error)
+	FindByID(ctx context.Context, id uint) (user *model.User, err error)
 	Update(ctx context.Context, id uint, user *model.User) (err error)
 	Delete(ctx context.Context, id uint) (err error)
 }
@@ -81,6 +82,11 @@ func (s *UserService) Finds(ctx context.Context, limit, offset uint) (users []mo
 	}
 
 	users, err = s.r.Finds(ctx, limit, offset)
+	return
+}
+
+func (s *UserService) FindByID(ctx context.Context, id uint) (user *model.User, err error) {
+	user, err = s.r.FindByID(ctx, id)
 	return
 }
 

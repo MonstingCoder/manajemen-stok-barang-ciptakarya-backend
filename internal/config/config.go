@@ -24,7 +24,7 @@ type Config struct {
 
 	AppPort        *string  `env:"APP_PORT" envDefault:":8080"`
 	AllowedOrigins []string `env:"ALLOWED_ORIGINS" envDefault:"http://localhost:5173" envSeparator:"|"`
-	AllowedMethods *string  `env:"ALLOWED_METHODS" envDefault:"GET, POST, PUT, DELETE, OPTIONS"`
+	AllowedMethods *string  `env:"ALLOWED_METHODS" envDefault:"GET, POST, PUT, PATCH, DELETE, OPTIONS"`
 	AllowedHeaders *string  `env:"ALLOWED_HEADERS" envDefault:"Content-Type, Authorization"`
 
 	DefaultDuration *time.Duration `env:"DEFAULT_DURATION" envDefault:"5s"`

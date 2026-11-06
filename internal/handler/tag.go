@@ -72,7 +72,7 @@ func (h *TagHandler) Finds(w http.ResponseWriter, r *http.Request) {
 func (h *TagHandler) FindByName(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "name query parameter is required"})
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "name path parameter is required"})
 		return
 	}
 
@@ -83,6 +83,46 @@ func (h *TagHandler) FindByName(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utility.WriteResponse(w, http.StatusOK, tags)
+}
+
+func (h *TagHandler) FindItemsByName(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" {
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "tag name path parameter is required"})
+		return
+	}
+
+	q := r.URL.Query()
+	limit, err := strconv.ParseUint(q.Get("limit"), 10, 0)
+	if err != nil || limit == 0 {
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "limit query parameter must be a positive integer"})
+		return
+	}
+	offset, err := strconv.ParseUint(q.Get("offset"), 10, 0)
+	if err != nil {
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "offset query parameter must be a non-negative integer"})
+		return
+	}
+
+	tags, err := h.s.FindByName(r.Context(), name)
+	if err != nil {
+		utility.WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		return
+	}
+
+	items := []model.Item{}
+	if len(tags) > 0 && offset < uint64(len(tags[0].Items)) {
+		start := int(offset)
+		end := len(tags[0].Items)
+		if limit < uint64(end-start) {
+			end = start + int(limit)
+		}
+		items = tags[0].Items[start:end]
+		if items == nil {
+			items = []model.Item{}
+		}
+	}
+	utility.WriteResponse(w, http.StatusOK, items)
 }
 
 func (h *TagHandler) Delete(w http.ResponseWriter, r *http.Request) {

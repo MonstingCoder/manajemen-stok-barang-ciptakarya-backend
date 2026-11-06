@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/model"
 	"gorm.io/gorm"
@@ -45,7 +46,7 @@ func (r *ItemRepo) Finds(ctx context.Context, limit, offset uint) (items []model
 }
 
 func (r *ItemRepo) FindByName(ctx context.Context, name string) (items []model.Item, err error) {
-	if items, err = gorm.G[model.Item](r.db).Preload("Tags", nil).Where("name = ?", name).Find(ctx); err != nil {
+	if items, err = gorm.G[model.Item](r.db).Preload("Tags", nil).Where("name ILIKE ?", fmt.Sprintf("%%%s%%", name)).Find(ctx); err != nil {
 		return
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -56,13 +57,24 @@ func (r *ItemRepo) FindByName(ctx context.Context, name string) (items []model.I
 }
 
 func (r *ItemRepo) Update(ctx context.Context, id uint, item *model.Item) (err error) {
-	if _, err = gorm.G[model.Item](r.db).Where("id = ?", id).Updates(ctx, *item); err != nil {
-		return
-	}
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = ErrItemNotFound
-	}
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var existing model.Item
+		if err := tx.First(&existing, id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrItemNotFound
+			}
+			return err
+		}
 
+		if err := tx.Model(&existing).
+			Omit("Tags").
+			Select("Name", "Price", "Quantity", "Description").
+			Updates(item).Error; err != nil {
+			return err
+		}
+
+		return tx.Model(&existing).Association("Tags").Replace(item.Tags)
+	})
 	return
 }
 

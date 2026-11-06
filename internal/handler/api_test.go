@@ -17,6 +17,7 @@ type userServiceStub struct {
 	regCalls   int
 	loginCalls int
 	user       *model.User
+	foundID    uint
 }
 
 func (s *userServiceStub) Reg(context.Context, *model.UserIn) (*model.User, error) {
@@ -33,12 +34,18 @@ func (*userServiceStub) Finds(context.Context, uint, uint) ([]model.User, error)
 	return nil, nil
 }
 
+func (s *userServiceStub) FindByID(_ context.Context, id uint) (*model.User, error) {
+	s.foundID = id
+	return s.user, nil
+}
+
 func (*userServiceStub) Update(context.Context, uint, *model.UserIn) error { return nil }
 func (*userServiceStub) Delete(context.Context, uint) error                { return nil }
 
 type tagServiceStub struct {
 	deletedID uint
 	foundName string
+	tags      []model.Tag
 }
 
 func (*tagServiceStub) Create(context.Context, *model.TagIn) (*model.Tag, error) {
@@ -51,7 +58,7 @@ func (*tagServiceStub) Finds(context.Context, uint, uint) ([]model.Tag, error) {
 
 func (s *tagServiceStub) FindByName(_ context.Context, name string) ([]model.Tag, error) {
 	s.foundName = name
-	return nil, nil
+	return s.tags, nil
 }
 
 func (s *tagServiceStub) Delete(_ context.Context, id uint) error {
@@ -90,6 +97,29 @@ func TestTagFindByNameUsesPathValue(t *testing.T) {
 	}
 	if service.foundName != "stationery" {
 		t.Fatalf("searched name = %q, want %q", service.foundName, "stationery")
+	}
+}
+
+func TestTagFindItemsByNameUsesTagItemsAndPagination(t *testing.T) {
+	firstName, secondName := "First item", "Second item"
+	service := &tagServiceStub{
+		tags: []model.Tag{{Items: []model.Item{{Name: &firstName}, {Name: &secondName}}}},
+	}
+	handler := NewTagHandler(service)
+	req := httptest.NewRequest(http.MethodGet, "/tags/stationery/items?limit=1&offset=1", nil)
+	req.SetPathValue("name", "stationery")
+	res := httptest.NewRecorder()
+
+	handler.FindItemsByName(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", res.Code, http.StatusOK, res.Body)
+	}
+	if service.foundName != "stationery" {
+		t.Fatalf("searched tag = %q, want %q", service.foundName, "stationery")
+	}
+	if !strings.Contains(res.Body.String(), `"Name":"Second item"`) || strings.Contains(res.Body.String(), `"Name":"First item"`) {
+		t.Fatalf("paginated items = %s, want only the second item", res.Body)
 	}
 }
 
@@ -222,12 +252,23 @@ func TestUserHandlers(t *testing.T) {
 			want:   http.StatusOK,
 		},
 		{
+			name:   "get own profile",
+			method: handler.Me,
+			req: func() *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "/users/me", nil)
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey{}, uint(7))
+				return req.WithContext(ctx)
+			}(),
+			want: http.StatusOK,
+		},
+		{
 			name:   "update user",
 			method: handler.Update,
 			req: func() *http.Request {
-				req := httptest.NewRequest(http.MethodPatch, "/users/1", strings.NewReader(userBody))
+				req := httptest.NewRequest(http.MethodPatch, "/users/1", strings.NewReader(`{"name":"Test","email":"test@example.com","password":"Secure1!"}`))
 				req.SetPathValue("id", "1")
 				ctx := context.WithValue(req.Context(), middleware.UserIDKey{}, uint(1))
+				ctx = context.WithValue(ctx, middleware.UserRoleKey{}, "admin")
 				return req.WithContext(ctx)
 			}(),
 			want: http.StatusOK,
@@ -255,6 +296,18 @@ func TestUserHandlers(t *testing.T) {
 			want: http.StatusBadRequest,
 		},
 		{
+			name:   "reject self role update",
+			method: handler.Update,
+			req: func() *http.Request {
+				req := httptest.NewRequest(http.MethodPatch, "/users/1", strings.NewReader(`{"role_id":2}`))
+				req.SetPathValue("id", "1")
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey{}, uint(1))
+				ctx = context.WithValue(ctx, middleware.UserRoleKey{}, "user")
+				return req.WithContext(ctx)
+			}(),
+			want: http.StatusForbidden,
+		},
+		{
 			name:   "delete user",
 			method: handler.Delete,
 			req: func() *http.Request {
@@ -278,9 +331,65 @@ func TestUserHandlers(t *testing.T) {
 	if service.regCalls != 1 || service.loginCalls != 1 {
 		t.Fatalf("service calls = reg:%d login:%d, want reg:1 login:1", service.regCalls, service.loginCalls)
 	}
+	if service.foundID != 7 {
+		t.Fatalf("profile user ID = %d, want 7", service.foundID)
+	}
 }
 
-type itemServiceStub struct{}
+func TestUserMeRequiresAuthenticatedIdentity(t *testing.T) {
+	service := new(userServiceStub)
+	handler := NewUserHandler(service, nil)
+	req := httptest.NewRequest(http.MethodGet, "/users/me", nil)
+	res := httptest.NewRecorder()
+
+	handler.Me(res, req)
+
+	if res.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusUnauthorized)
+	}
+	if service.foundID != 0 {
+		t.Fatalf("service called with user ID %d, want no call", service.foundID)
+	}
+}
+
+func TestUserMeOnlyReturnsPublicProfileFields(t *testing.T) {
+	name := "Crew"
+	email := "crew@example.com"
+	roleName := "crew"
+	roleID := uint(1)
+	hash := "private-password-hash"
+	user := &model.User{
+		Name:         &name,
+		Email:        &email,
+		RoleID:       &roleID,
+		PasswordHash: &hash,
+		Role:         &model.Role{Name: &roleName},
+	}
+	user.ID = 7
+	service := &userServiceStub{user: user}
+	handler := NewUserHandler(service, nil)
+	req := httptest.NewRequest(http.MethodGet, "/users/me", nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey{}, uint(7)))
+	res := httptest.NewRecorder()
+
+	handler.Me(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", res.Code, http.StatusOK, res.Body)
+	}
+	if strings.Contains(res.Body.String(), hash) {
+		t.Fatal("profile response exposed the password hash")
+	}
+	for _, field := range []string{`"id":7`, `"name":"Crew"`, `"email":"crew@example.com"`, `"role_id":1`, `"name":"crew"`} {
+		if !strings.Contains(res.Body.String(), field) {
+			t.Errorf("profile response %q does not contain %s", res.Body.String(), field)
+		}
+	}
+}
+
+type itemServiceStub struct {
+	items []model.Item
+}
 
 func (*itemServiceStub) Create(context.Context, *model.ItemIn) (*model.Item, error) {
 	return &model.Item{}, nil
@@ -295,7 +404,8 @@ func (*itemServiceStub) Update(context.Context, uint, *model.ItemIn) error { ret
 func (*itemServiceStub) Delete(context.Context, uint) error                { return nil }
 
 func TestItemHandlers(t *testing.T) {
-	handler := NewItemHandler(new(itemServiceStub))
+	service := new(itemServiceStub)
+	handler := NewItemHandler(service)
 	tests := []struct {
 		name   string
 		method func(http.ResponseWriter, *http.Request)

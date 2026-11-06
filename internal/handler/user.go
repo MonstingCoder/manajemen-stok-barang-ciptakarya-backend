@@ -19,6 +19,7 @@ type UserService interface {
 	Reg(ctx context.Context, in *model.UserIn) (user *model.User, err error)
 	Login(ctx context.Context, email model.Email, pw model.Pw) (user *model.User, err error)
 	Finds(ctx context.Context, limit, offset uint) (users []model.User, err error)
+	FindByID(ctx context.Context, id uint) (user *model.User, err error)
 	Update(ctx context.Context, id uint, in *model.UserIn) (err error)
 	Delete(ctx context.Context, id uint) (err error)
 }
@@ -117,6 +118,39 @@ func (h *UserHandler) Finds(w http.ResponseWriter, r *http.Request) {
 	utility.WriteResponse(w, http.StatusOK, users)
 }
 
+func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey{}).(uint)
+	if !ok || userID == 0 {
+		utility.WriteError(w, http.StatusUnauthorized, map[string]string{"message": "login required"})
+		return
+	}
+
+	user, err := h.s.FindByID(r.Context(), userID)
+	if err != nil {
+		utility.WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		return
+	}
+	if user == nil {
+		utility.WriteError(w, http.StatusNotFound, map[string]string{"message": "user profile not found"})
+		return
+	}
+
+	profile := model.UserProfile{
+		ID:     user.ID,
+		Name:   user.Name,
+		Email:  user.Email,
+		RoleID: user.RoleID,
+	}
+	if user.Role != nil {
+		profile.Role = &model.UserProfileRole{
+			ID:   user.Role.ID,
+			Name: user.Role.Name,
+		}
+	}
+
+	utility.WriteResponse(w, http.StatusOK, profile)
+}
+
 func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseUint(r.PathValue("id"), 10, 0)
 	if err != nil {
@@ -149,6 +183,11 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	body := new(model.UserIn)
 	if err := dec.Decode(body); err != nil {
 		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
+		return
+	}
+	userRoleKey, hasRole := ctx.Value(middleware.UserRoleKey{}).(string)
+	if userIDKey == uint(id) && body.RoleID != nil && (!hasRole || userRoleKey != "admin") {
+		utility.WriteError(w, http.StatusForbidden, map[string]string{"message": "users cannot change their own role"})
 		return
 	}
 	if body.Name == nil && body.Email == nil && body.Pw == nil && body.RoleID == nil {

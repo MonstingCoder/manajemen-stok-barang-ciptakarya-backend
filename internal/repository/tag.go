@@ -60,7 +60,11 @@ func (r *TagRepo) Finds(ctx context.Context, limit uint, offset uint) (tags []mo
 }
 
 func (r *TagRepo) FindByName(ctx context.Context, name string) (tags []model.Tag, err error) {
-	if tags, err = gorm.G[model.Tag](r.db).Where("name = ?", name).Find(ctx); err != nil {
+	if tags, err = gorm.G[model.Tag](r.db).
+		Preload("Items", nil).
+		Preload("Items.Tags", nil).
+		Where("name = ?", name).
+		Find(ctx); err != nil {
 		return
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {

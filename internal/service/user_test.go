@@ -9,6 +9,7 @@ import (
 
 type userRepoStub struct {
 	updated *model.User
+	foundID uint
 }
 
 func (*userRepoStub) Create(context.Context, *model.User) error { return nil }
@@ -17,6 +18,10 @@ func (*userRepoStub) Finds(context.Context, uint, uint) ([]model.User, error) {
 }
 func (*userRepoStub) FindByEmail(context.Context, string) (*model.User, error) {
 	return nil, nil
+}
+func (r *userRepoStub) FindByID(_ context.Context, id uint) (*model.User, error) {
+	r.foundID = id
+	return &model.User{}, nil
 }
 func (r *userRepoStub) Update(_ context.Context, _ uint, user *model.User) error {
 	r.updated = user
@@ -47,7 +52,20 @@ func TestUserUpdateRejectsEmptyFields(t *testing.T) {
 	if err := service.Update(context.Background(), 1, new(model.UserIn)); err == nil {
 		t.Fatal("Update with no fields should return an error")
 	}
+
 	if repo.updated != nil {
 		t.Fatal("repository should not be called for an empty update")
+	}
+}
+
+func TestUserFindByID(t *testing.T) {
+	repo := new(userRepoStub)
+	service := NewUserService(repo)
+
+	if _, err := service.FindByID(context.Background(), 42); err != nil {
+		t.Fatalf("FindByID returned error: %v", err)
+	}
+	if repo.foundID != 42 {
+		t.Fatalf("FindByID called with %d, want 42", repo.foundID)
 	}
 }
