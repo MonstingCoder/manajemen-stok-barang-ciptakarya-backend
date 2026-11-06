@@ -34,7 +34,7 @@ func (r *ItemRepo) Create(ctx context.Context, item *model.Item) (err error) {
 }
 
 func (r *ItemRepo) Finds(ctx context.Context, limit, offset uint) (items []model.Item, err error) {
-	if items, err = gorm.G[model.Item](r.db).Limit(int(limit)).Offset(int(offset)).Find(ctx); err != nil {
+	if items, err = gorm.G[model.Item](r.db).Preload("Tags", nil).Limit(int(limit)).Offset(int(offset)).Find(ctx); err != nil {
 		return
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -45,7 +45,7 @@ func (r *ItemRepo) Finds(ctx context.Context, limit, offset uint) (items []model
 }
 
 func (r *ItemRepo) FindByName(ctx context.Context, name string) (items []model.Item, err error) {
-	if items, err = gorm.G[model.Item](r.db).Where("name = ?", name).Find(ctx); err != nil {
+	if items, err = gorm.G[model.Item](r.db).Preload("Tags", nil).Where("name = ?", name).Find(ctx); err != nil {
 		return
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {

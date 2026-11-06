@@ -233,6 +233,28 @@ func TestUserHandlers(t *testing.T) {
 			want: http.StatusOK,
 		},
 		{
+			name:   "partially update user",
+			method: handler.Update,
+			req: func() *http.Request {
+				req := httptest.NewRequest(http.MethodPatch, "/users/1", strings.NewReader(`{"name":"Kru"}`))
+				req.SetPathValue("id", "1")
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey{}, uint(1))
+				return req.WithContext(ctx)
+			}(),
+			want: http.StatusOK,
+		},
+		{
+			name:   "reject empty user update",
+			method: handler.Update,
+			req: func() *http.Request {
+				req := httptest.NewRequest(http.MethodPatch, "/users/1", strings.NewReader(`{}`))
+				req.SetPathValue("id", "1")
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey{}, uint(1))
+				return req.WithContext(ctx)
+			}(),
+			want: http.StatusBadRequest,
+		},
+		{
 			name:   "delete user",
 			method: handler.Delete,
 			req: func() *http.Request {

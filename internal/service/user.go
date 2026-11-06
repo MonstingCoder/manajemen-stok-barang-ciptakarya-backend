@@ -85,25 +85,36 @@ func (s *UserService) Finds(ctx context.Context, limit, offset uint) (users []mo
 }
 
 func (s *UserService) Update(ctx context.Context, id uint, in *model.UserIn) (err error) {
-	if err = in.Email.Check(); err != nil {
-		return
-	}
-	if err = in.Pw.Check(); err != nil {
-		return
+	if in == nil {
+		return errors.New("user update is empty")
 	}
 
-	pwHash, err := in.Pw.Hash()
-	if err != nil {
-		return
+	user := new(model.User)
+	user.Name = in.Name
+	user.RoleID = in.RoleID
+
+	if in.Email != nil {
+		if err = in.Email.Check(); err != nil {
+			return
+		}
+		email := string(*in.Email)
+		user.Email = &email
 	}
 
-	err = s.r.Update(ctx, id, new(model.User{
-		Name:         in.Name,
-		Email:        (*string)(in.Email),
-		PasswordHash: pwHash,
-		RoleID:       in.RoleID,
-	}))
-	return
+	if in.Pw != nil {
+		if err = in.Pw.Check(); err != nil {
+			return
+		}
+		if user.PasswordHash, err = in.Pw.Hash(); err != nil {
+			return
+		}
+	}
+
+	if user.Name == nil && user.Email == nil && user.PasswordHash == nil && user.RoleID == nil {
+		return errors.New("user update is empty")
+	}
+
+	return s.r.Update(ctx, id, user)
 }
 
 func (s *UserService) Delete(ctx context.Context, id uint) (err error) {

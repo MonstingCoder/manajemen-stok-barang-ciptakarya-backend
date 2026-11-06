@@ -151,13 +151,21 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
-	if body.Name == nil || body.Email == nil || body.Pw == nil || body.RoleID == nil {
-		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "name, email, password, and role_id are required"})
+	if body.Name == nil && body.Email == nil && body.Pw == nil && body.RoleID == nil {
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "at least one user field is required"})
 		return
 	}
 
 	if err = h.s.Update(r.Context(), uint(id), body); err != nil {
-		utility.WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		status := http.StatusInternalServerError
+		if errors.Is(err, model.ErrEmptyEmail) ||
+			errors.Is(err, model.ErrEmailLen) ||
+			errors.Is(err, model.ErrInvalidEmail) ||
+			errors.Is(err, model.ErrPwLen) ||
+			errors.Is(err, model.ErrInvalidPw) {
+			status = http.StatusBadRequest
+		}
+		utility.WriteError(w, status, map[string]string{"message": err.Error()})
 		return
 	}
 

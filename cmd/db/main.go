@@ -101,57 +101,57 @@ func seed(ctx context.Context, db *gorm.DB) {
 			return
 		}
 
-		tagRepo := repository.NewTagRepo(db)
+		tagRepo := repository.NewTagRepo(tx)
 		tagService := service.NewTagService(tagRepo)
 		tagIns := []model.TagIn{
 			{
 				Name: new("consumables"),
 				Items: []model.ItemIn{
-					{Name: new("Printer Ink"), Price: new(uint(125000)), Quantity: new(uint(20))},
-					{Name: new("Printer Toner"), Price: new(uint(350000)), Quantity: new(uint(10))},
-					{Name: new("AA Batteries"), Price: new(uint(30000)), Quantity: new(uint(50))},
-					{Name: new("Cleaning Solution"), Price: new(uint(45000)), Quantity: new(uint(15))},
-					{Name: new("Hand Sanitizer"), Price: new(uint(25000)), Quantity: new(uint(30))},
+					{Name: new("Printer Ink"), Price: new(uint(125000)), Quantity: new(uint(20)), Description: new("Tinta isi ulang untuk kebutuhan pencetakan dokumen kantor.")},
+					{Name: new("Printer Toner"), Price: new(uint(350000)), Quantity: new(uint(10)), Description: new("Serbuk toner pengganti untuk printer laser kantor.")},
+					{Name: new("AA Batteries"), Price: new(uint(30000)), Quantity: new(uint(50)), Description: new("Baterai ukuran AA untuk perangkat elektronik kantor.")},
+					{Name: new("Cleaning Solution"), Price: new(uint(45000)), Quantity: new(uint(15)), Description: new("Cairan pembersih untuk menjaga kebersihan peralatan dan area kerja.")},
+					{Name: new("Hand Sanitizer"), Price: new(uint(25000)), Quantity: new(uint(30)), Description: new("Cairan pembersih tangan untuk penggunaan bersama di kantor.")},
 				},
 			},
 			{
 				Name: new("furniture"),
 				Items: []model.ItemIn{
-					{Name: new("Office Chair"), Price: new(uint(750000)), Quantity: new(uint(12))},
-					{Name: new("Work Desk"), Price: new(uint(1500000)), Quantity: new(uint(8))},
-					{Name: new("Filing Cabinet"), Price: new(uint(1200000)), Quantity: new(uint(6))},
-					{Name: new("Bookshelf"), Price: new(uint(900000)), Quantity: new(uint(5))},
-					{Name: new("Meeting Table"), Price: new(uint(2500000)), Quantity: new(uint(2))},
+					{Name: new("Office Chair"), Price: new(uint(750000)), Quantity: new(uint(12)), Description: new("Kursi kerja untuk mendukung aktivitas staf di meja kerja.")},
+					{Name: new("Work Desk"), Price: new(uint(1500000)), Quantity: new(uint(8)), Description: new("Meja kerja untuk menunjang kegiatan administrasi dan operasional.")},
+					{Name: new("Filing Cabinet"), Price: new(uint(1200000)), Quantity: new(uint(6)), Description: new("Lemari arsip untuk menyimpan dokumen dan berkas kantor.")},
+					{Name: new("Bookshelf"), Price: new(uint(900000)), Quantity: new(uint(5)), Description: new("Rak untuk menyimpan buku, dokumen, dan perlengkapan kantor.")},
+					{Name: new("Meeting Table"), Price: new(uint(2500000)), Quantity: new(uint(2)), Description: new("Meja besar untuk kegiatan rapat dan diskusi tim.")},
 				},
 			},
 			{
 				Name: new("peripheral"),
 				Items: []model.ItemIn{
-					{Name: new("Keyboard"), Price: new(uint(250000)), Quantity: new(uint(15))},
-					{Name: new("Mouse"), Price: new(uint(150000)), Quantity: new(uint(20))},
-					{Name: new("Monitor"), Price: new(uint(2200000)), Quantity: new(uint(7))},
-					{Name: new("Webcam"), Price: new(uint(500000)), Quantity: new(uint(8))},
-					{Name: new("USB Hub"), Price: new(uint(175000)), Quantity: new(uint(12))},
+					{Name: new("Keyboard"), Price: new(uint(250000)), Quantity: new(uint(15)), Description: new("Papan ketik untuk memasukkan teks dan perintah ke komputer.")},
+					{Name: new("Mouse"), Price: new(uint(150000)), Quantity: new(uint(20)), Description: new("Perangkat penunjuk untuk mengoperasikan komputer.")},
+					{Name: new("Monitor"), Price: new(uint(2200000)), Quantity: new(uint(7)), Description: new("Layar eksternal untuk menampilkan keluaran komputer.")},
+					{Name: new("Webcam"), Price: new(uint(500000)), Quantity: new(uint(8)), Description: new("Kamera untuk rapat daring dan komunikasi video.")},
+					{Name: new("USB Hub"), Price: new(uint(175000)), Quantity: new(uint(12)), Description: new("Hub untuk menambah port USB yang tersedia pada komputer.")},
 				},
 			},
 			{
 				Name: new("stationery"),
 				Items: []model.ItemIn{
-					{Name: new("A4 Paper"), Price: new(uint(55000)), Quantity: new(uint(40))},
-					{Name: new("Ballpoint Pen"), Price: new(uint(5000)), Quantity: new(uint(100))},
-					{Name: new("Notebook"), Price: new(uint(15000)), Quantity: new(uint(60))},
-					{Name: new("Sticky Notes"), Price: new(uint(12000)), Quantity: new(uint(35))},
-					{Name: new("Stapler"), Price: new(uint(45000)), Quantity: new(uint(10))},
+					{Name: new("A4 Paper"), Price: new(uint(55000)), Quantity: new(uint(40)), Description: new("Kertas ukuran A4 untuk mencetak dan menyalin dokumen.")},
+					{Name: new("Ballpoint Pen"), Price: new(uint(5000)), Quantity: new(uint(100)), Description: new("Pulpen untuk menulis dan mengisi dokumen kantor.")},
+					{Name: new("Notebook"), Price: new(uint(15000)), Quantity: new(uint(60)), Description: new("Buku catatan untuk mencatat informasi dan agenda kerja.")},
+					{Name: new("Sticky Notes"), Price: new(uint(12000)), Quantity: new(uint(35)), Description: new("Kertas catatan berperekat untuk pengingat dan penanda dokumen.")},
+					{Name: new("Stapler"), Price: new(uint(45000)), Quantity: new(uint(10)), Description: new("Alat untuk menyatukan lembaran kertas dengan staples.")},
 				},
 			},
 			{
 				Name: new("vehicle"),
 				Items: []model.ItemIn{
-					{Name: new("Company Motorcycle"), Price: new(uint(18000000)), Quantity: new(uint(2))},
-					{Name: new("Company Car"), Price: new(uint(250000000)), Quantity: new(uint(1))},
-					{Name: new("Motorcycle Helmet"), Price: new(uint(350000)), Quantity: new(uint(4))},
-					{Name: new("Spare Tire"), Price: new(uint(1200000)), Quantity: new(uint(4))},
-					{Name: new("Vehicle Battery"), Price: new(uint(950000)), Quantity: new(uint(3))},
+					{Name: new("Company Motorcycle"), Price: new(uint(18000000)), Quantity: new(uint(2)), Description: new("Sepeda motor operasional perusahaan untuk perjalanan dinas.")},
+					{Name: new("Company Car"), Price: new(uint(250000000)), Quantity: new(uint(1)), Description: new("Mobil operasional perusahaan untuk kebutuhan transportasi.")},
+					{Name: new("Motorcycle Helmet"), Price: new(uint(350000)), Quantity: new(uint(4)), Description: new("Helm pelindung untuk keselamatan pengendara sepeda motor.")},
+					{Name: new("Spare Tire"), Price: new(uint(1200000)), Quantity: new(uint(4)), Description: new("Ban cadangan untuk mengganti ban kendaraan yang rusak atau kempis.")},
+					{Name: new("Vehicle Battery"), Price: new(uint(950000)), Quantity: new(uint(3)), Description: new("Aki untuk memasok daya listrik pada kendaraan operasional.")},
 				},
 			},
 		}
