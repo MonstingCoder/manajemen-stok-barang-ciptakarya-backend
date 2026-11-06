@@ -39,7 +39,7 @@ services:
 
   pgadmin:
     container_name: pgadmin
-    image: docker.io/dpage/pgadmin4:9.18.0
+    image: docker.io/dpage/pgadmin4:9.19.0
     restart: always
     depends_on: postgres
     ports:

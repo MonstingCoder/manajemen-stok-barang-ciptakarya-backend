@@ -11,21 +11,37 @@ import (
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/utility"
 )
 
-type Middleware struct {
+type Middleware func(next http.Handler) (h http.Handler)
+
+func Chain(hIn http.Handler, ms ...Middleware) (h http.Handler) { // LIFO
+	for i := len(ms) - 1; i >= 0; i-- {
+		hIn = ms[i](hIn)
+	}
+
+	h = hIn
+	return
+}
+
+type Middlewares struct {
 	cfg *config.Config
+}
+
+func NewMiddlewares(cfg *config.Config) (m *Middlewares) {
+	m = new(Middlewares{cfg})
+	return
 }
 
 type UserIDKey struct{}
 type UserRoleKey struct{}
 
-func (m *Middleware) CORS(next http.Handler) (handler http.Handler) {
-	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (m *Middlewares) CORS(next http.Handler) (h http.Handler) {
+	h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		headers := w.Header()
 		for _, origin := range m.cfg.AllowedOrigins {
 			headers.Add("Access-Control-Allow-Origin", origin)
 		}
-		headers.Add("Access-Control-Allow-Methods", m.cfg.AllowedMethods)
-		headers.Add("Access-Control-Allow-Headers", m.cfg.AllowedHeaders)
+		headers.Add("Access-Control-Allow-Methods", *m.cfg.AllowedMethods)
+		headers.Add("Access-Control-Allow-Headers", *m.cfg.AllowedHeaders)
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -37,8 +53,8 @@ func (m *Middleware) CORS(next http.Handler) (handler http.Handler) {
 	return
 }
 
-func (m *Middleware) Auth(next http.Handler) (handler http.Handler) {
-	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (m *Middlewares) Auth(next http.Handler) (h http.Handler) {
+	h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if raw == "" || !ok {
 			utility.WriteError(w, http.StatusUnauthorized, map[string]string{"message": "login required"})
@@ -50,7 +66,7 @@ func (m *Middleware) Auth(next http.Handler) (handler http.Handler) {
 			raw,
 			claims,
 			func(t *jwt.Token) (secret any, err error) {
-				secret = m.cfg.JWTSecret
+				secret = []byte(*m.cfg.JWTSecret)
 				return
 			},
 			jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
@@ -64,28 +80,35 @@ func (m *Middleware) Auth(next http.Handler) (handler http.Handler) {
 			utility.WriteError(w, http.StatusUnauthorized, map[string]string{"message": "invalid token"})
 			return
 		}
+		if claims.Role == nil || *claims.Role == "" {
+			utility.WriteError(w, http.StatusUnauthorized, map[string]string{"message": "invalid token claims"})
+			return
+		}
 
-		ctx := context.WithValue(r.Context(), UserIDKey{}, claims.ID)
+		ctx := context.WithValue(r.Context(), UserIDKey{}, claims.UserID)
 		ctx = context.WithValue(ctx, UserRoleKey{}, *claims.Role)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 	return
 }
 
-func (m *Middleware) Autho(next http.Handler, requiredRole string) (handler http.Handler) {
-	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		role, ok := ctx.Value("UserRoleKey").(string)
-		if role == "" || !ok {
-			utility.WriteError(w, http.StatusUnauthorized, map[string]string{"message": "login required"})
-			return
-		}
-		if role != requiredRole {
-			utility.WriteError(w, http.StatusForbidden, map[string]string{"message": "forbidden"})
-			return
-		}
+func (m *Middlewares) Autho(requiredRole string) (mOut func(next http.Handler) (h http.Handler)) {
+	mOut = func(next http.Handler) (h http.Handler) {
+		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			role, ok := ctx.Value(UserRoleKey{}).(string)
+			if role == "" || !ok {
+				utility.WriteError(w, http.StatusUnauthorized, map[string]string{"message": "login required"})
+				return
+			}
+			if role != requiredRole {
+				utility.WriteError(w, http.StatusForbidden, map[string]string{"message": "forbidden"})
+				return
+			}
 
-		next.ServeHTTP(w, r)
-	})
+			next.ServeHTTP(w, r)
+		})
+		return
+	}
 	return
 }

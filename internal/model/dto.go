@@ -10,7 +10,7 @@ type UserLoginReq struct {
 }
 
 type UserClaims struct {
-	// User *UserOut `json:"user"`
-	Role *string
+	UserID uint
+	Role   *string
 	*jwt.RegisteredClaims
 }

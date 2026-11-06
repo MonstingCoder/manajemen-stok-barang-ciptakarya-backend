@@ -70,7 +70,7 @@ func (h *TagHandler) Finds(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TagHandler) FindByName(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Query().Get("name")
+	name := r.PathValue("name")
 	if name == "" {
 		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "name query parameter is required"})
 		return
@@ -86,9 +86,9 @@ func (h *TagHandler) FindByName(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TagHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseUint(r.URL.Query().Get("id"), 10, 0)
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 0)
 	if err != nil {
-		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "id query parameter is required"})
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "id path parameter must be a positive integer"})
 		return
 	}
 
@@ -98,5 +98,5 @@ func (h *TagHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utility.WriteResponse(w, http.StatusOK, map[string]string{"message": "Tag deleted successfully"})
+	utility.WriteResponse(w, http.StatusNoContent, map[string]string{"message": "Tag deleted successfully"})
 }

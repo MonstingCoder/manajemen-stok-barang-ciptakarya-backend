@@ -18,10 +18,6 @@ func main() {
 }
 
 func run() {
-	usage := func() {
-		panic(fmt.Sprintln("args: migrate, seed, drop-db"))
-	}
-
 	if len(os.Args) < 2 {
 		usage()
 		return
@@ -29,13 +25,17 @@ func run() {
 
 	cfg, err := config.NewConfig()
 	if err != nil {
-		panic(fmt.Sprintln("error:", err))
+		fmt.Println("error:", err)
+		return
 	}
+
 	db, err := database.NewDB(cfg)
 	if err != nil {
-		panic(fmt.Sprint("error:", err))
+		fmt.Println("error:", err)
+		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.DefaultDuration)
+
+	ctx, cancel := context.WithTimeout(context.Background(), *cfg.DefaultDuration)
 	defer cancel()
 
 	switch os.Args[1] {
@@ -43,11 +43,15 @@ func run() {
 		migrate(db)
 	case "seed":
 		seed(ctx, db)
-	case "drob-db":
-		dropDb(db)
+	case "drop-tables":
+		dropTables(db)
 	default:
 		usage()
 	}
+}
+
+func usage() {
+	fmt.Println("args: migrate, seed, drop-tables")
 }
 
 func migrate(db *gorm.DB) {
@@ -86,7 +90,7 @@ func seed(ctx context.Context, db *gorm.DB) {
 				Name: new("admin"),
 				Users: []model.UserIn{
 					{
-						Name:  new("Admin User"),
+						Name:  new("admin"),
 						Email: new(model.Email("admin@example.com")),
 						Pw:    new(model.Pw("Admin123!")),
 					},
@@ -159,7 +163,7 @@ func seed(ctx context.Context, db *gorm.DB) {
 	fmt.Println("seed success")
 }
 
-func dropDb(db *gorm.DB) {
+func dropTables(db *gorm.DB) {
 	if err := db.Migrator().DropTable(
 		new(model.User),
 		new(model.Role),
@@ -167,7 +171,7 @@ func dropDb(db *gorm.DB) {
 		new(model.Tag),
 		"item_tags",
 	); err != nil {
-		panic(fmt.Sprintln("drop-db err:", err))
+		panic(fmt.Sprintln("drop-tables err:", err))
 	}
-	fmt.Println("drop-db success")
+	fmt.Println("drop-tables success")
 }

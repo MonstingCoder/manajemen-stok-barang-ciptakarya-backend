@@ -11,32 +11,32 @@ import (
 var ErrParseEnv = errors.New("ERROR PARSE ENV")
 
 type Config struct {
-	DBUser     string `env:"DB_USER"`
-	DBPassword string `env:"DB_PASSWORD"`
-	DBName     string `env:"DB_NAME"`
+	DBHost            *string        `env:"DB_HOST" envDefault:"localhost"`
+	DBUser            *string        `env:"DB_USER"`
+	DBPassword        *string        `env:"DB_PASSWORD"`
+	DBName            *string        `env:"DB_NAME"`
+	DBTimeZone        *string        `env:"DB_TIMEZONE" envDefault:"Asia/Jakarta"`
+	DBMaxOpenCons     *uint          `env:"DB_MAX_OPEN_CONS" envDefault:"5"`
+	DBConnMaxIdleTime *time.Duration `env:"DB_CONN_MAX_IDLE_TIME" envDefault:"10m"`
 
-	JWTSecret     []byte `env:"JWT_SECRET"`
-	JWTExpireTime time.Duration
+	JWTSecret     *string        `env:"JWT_SECRET"`
+	JWTExpireTime *time.Duration `env:"JWT_EXPIRE_TIME" envDefault:"30m"`
 
-	AllowedOrigins []string `env:"ALLOWED_ORIGINS"`
-	AllowedMethods string
-	AllowedHeaders string
+	AppPort        *string  `env:"APP_PORT" envDefault:":8080"`
+	AllowedOrigins []string `env:"ALLOWED_ORIGINS" envDefault:"http://localhost:5173" envSeparator:"|"`
+	AllowedMethods *string  `env:"ALLOWED_METHODS" envDefault:"GET, POST, PUT, DELETE, OPTIONS"`
+	AllowedHeaders *string  `env:"ALLOWED_HEADERS" envDefault:"Content-Type, Authorization"`
 
-	DefaultDuration time.Duration
+	DefaultDuration *time.Duration `env:"DEFAULT_DURATION" envDefault:"5s"`
 }
 
 func NewConfig() (cfg *Config, err error) {
 	_ = godotenv.Load()
 
-	if cfg, err = env.ParseAs[*Config](); err != nil {
+	cfg = new(Config)
+	if *cfg, err = env.ParseAs[Config](); err != nil {
 		err = ErrParseEnv
 	}
-
-	cfg.JWTExpireTime = 30 * time.Minute
-	cfg.AllowedOrigins = []string{"http://localhost:5173"}
-	cfg.AllowedMethods = "GET, POST, PUT, DELETE, OPTIONS"
-	cfg.AllowedHeaders = "Content-Type, Authorization"
-	cfg.DefaultDuration = 5 * time.Second
 
 	return
 }

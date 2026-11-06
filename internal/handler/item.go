@@ -122,5 +122,5 @@ func (h *ItemHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utility.WriteResponse(w, http.StatusOK, map[string]string{"message": "item deleted successfully"})
+	utility.WriteResponse(w, http.StatusNoContent, map[string]string{"message": "item deleted successfully"})
 }

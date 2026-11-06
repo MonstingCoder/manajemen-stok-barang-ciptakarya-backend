@@ -35,5 +35,5 @@ func (h *RoleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utility.WriteResponse(w, http.StatusOK, map[string]string{"message": "role deleted successfully"})
+	utility.WriteResponse(w, http.StatusNoContent, map[string]string{"message": "role deleted successfully"})
 }

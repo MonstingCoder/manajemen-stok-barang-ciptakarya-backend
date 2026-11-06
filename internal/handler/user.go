@@ -3,12 +3,14 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/config"
+	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/middleware"
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/model"
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/utility"
 )
@@ -42,6 +44,10 @@ func (h *UserHandler) Reg(w http.ResponseWriter, r *http.Request) {
 		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
+	if body.Name == nil || body.Email == nil || body.Pw == nil || body.RoleID == nil {
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "name, email, password, and role_id are required"})
+		return
+	}
 
 	user, err := h.s.Reg(r.Context(), body)
 	if err != nil {
@@ -49,7 +55,7 @@ func (h *UserHandler) Reg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := CreateUserClaims(user, time.Now(), h.cfg)
+	token, err := createUserClaims(user, h.cfg)
 	if err != nil {
 		utility.WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 		return
@@ -67,6 +73,10 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
+	if body.Email == nil || body.Password == nil {
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "email and password are required"})
+		return
+	}
 
 	user, err := h.s.Login(r.Context(), model.Email(*body.Email), model.Pw(*body.Password))
 	if err != nil {
@@ -74,7 +84,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := CreateUserClaims(user, time.Now(), h.cfg)
+	token, err := createUserClaims(user, h.cfg)
 	if err != nil {
 		utility.WriteError(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 		return
@@ -114,12 +124,35 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
+	userIDKey, ok := ctx.Value(middleware.UserIDKey{}).(uint)
+	if !ok {
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "bad request"})
+		return
+	}
+	if userIDKey != uint(id) {
+		userRoleKey, ok := ctx.Value(middleware.UserRoleKey{}).(string)
+		if !ok {
+			utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "bad request"})
+			return
+		}
+
+		if userRoleKey != "admin" {
+			utility.WriteError(w, http.StatusForbidden, map[string]string{"message": "not allowed"})
+			return
+		}
+	}
+
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 
 	body := new(model.UserIn)
 	if err := dec.Decode(body); err != nil {
 		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
+		return
+	}
+	if body.Name == nil || body.Email == nil || body.Pw == nil || body.RoleID == nil {
+		utility.WriteError(w, http.StatusBadRequest, map[string]string{"message": "name, email, password, and role_id are required"})
 		return
 	}
 
@@ -143,17 +176,23 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utility.WriteResponse(w, http.StatusOK, map[string]string{"message": "user deleted successfully"})
+	utility.WriteResponse(w, http.StatusNoContent, map[string]string{"message": "user deleted successfully"})
 }
 
-func CreateUserClaims(user *model.User, now time.Time, cfg *config.Config) (token string, err error) {
+func createUserClaims(user *model.User, cfg *config.Config) (token string, err error) {
+	if user == nil || user.Role == nil || user.Role.Name == nil || cfg == nil || cfg.JWTSecret == nil || cfg.JWTExpireTime == nil {
+		return "", errors.New("cannot create token: user role and JWT configuration are required")
+	}
+
+	now := time.Now()
 	claims := new(model.UserClaims{
+		UserID: user.ID,
+		Role:   user.Role.Name,
 		RegisteredClaims: new(jwt.RegisteredClaims{
-			ID: strconv.FormatUint(uint64(user.ID), 10),
+			ExpiresAt: jwt.NewNumericDate(now.Add(*cfg.JWTExpireTime)),
 		}),
-		Role: user.Role.Name,
 	})
 
-	token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(cfg.JWTSecret)
+	token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(*cfg.JWTSecret))
 	return
 }

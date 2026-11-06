@@ -13,14 +13,23 @@ var ErrCreateDB = errors.New("CREATE DATABASE ERROR")
 
 func NewDB(cfg *config.Config) (db *gorm.DB, err error) {
 	dsn := fmt.Sprintf(
-		"user=%v password=%v dbname=%v",
-		cfg.DBUser, cfg.DBPassword, cfg.DBName,
+		"host=%v user=%v password=%v dbname=%v TimeZone=%v",
+		*cfg.DBHost, *cfg.DBUser, *cfg.DBPassword, *cfg.DBName, *cfg.DBTimeZone,
 	)
 	dialec := postgres.Open(dsn)
 	gormCfg := new(gorm.Config{
 		TranslateError: true,
 	})
+	if db, err = gorm.Open(dialec, gormCfg); err != nil {
+		return
+	}
 
-	db, err = gorm.Open(dialec, gormCfg)
+	sqlDB, err := db.DB()
+	if err != nil {
+		return
+	}
+	sqlDB.SetMaxOpenConns(int(*cfg.DBMaxOpenCons))
+	sqlDB.SetConnMaxIdleTime(*cfg.DBConnMaxIdleTime)
+
 	return
 }

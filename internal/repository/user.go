@@ -6,7 +6,6 @@ import (
 
 	"github.com/monstingcoder/manajemen-stok-barang-ciptakarya-backend/internal/model"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type UserRepo struct {
@@ -39,7 +38,7 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) (err error) {
 }
 
 func (r *UserRepo) Finds(ctx context.Context, limit, offset uint) (users []model.User, err error) {
-	if users, err = gorm.G[model.User](r.db).Preload(clause.Associations, nil).Limit(int(limit)).Offset(int(offset)).Find(ctx); err != nil {
+	if users, err = gorm.G[model.User](r.db).Preload("Role", nil).Limit(int(limit)).Offset(int(offset)).Find(ctx); err != nil {
 		return
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -51,7 +50,7 @@ func (r *UserRepo) Finds(ctx context.Context, limit, offset uint) (users []model
 
 func (r *UserRepo) FindByEmail(ctx context.Context, email string) (user *model.User, err error) {
 	user = new(model.User)
-	if *user, err = gorm.G[model.User](r.db).Preload(clause.Associations, nil).Where("email = ?", email).Take(ctx); err != nil {
+	if *user, err = gorm.G[model.User](r.db).Preload("Role", nil).Where("email = ?", email).Take(ctx); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			err = ErrUserNotFound
 		}
